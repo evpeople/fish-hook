@@ -1,4 +1,7 @@
 import hmac
+import json as js
+import os
+
 from sanic import Sanic
 from sanic.response import json
 from hashlib import sha1
@@ -6,14 +9,23 @@ from .settings import REQUIRED_HEADERS
 from .fishhook import FishHook
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-server = Sanic()
+from .utils import find_main_directory
+
+server = Sanic(name='hook')
 
 @server.post('/<name>')
 async def serve(request, name):
     headers = request.headers
     body = request.body
     secret = FishHook.get_secret(name)
+    base_path = find_main_directory(os.getcwd())
+    app_path = os.path.join(base_path, name)
+    json_file_path = os.path.join(app_path,'message.json')
 
+    file=open(json_file_path,'w+')
+    file.write(body.decode())
+
+    file.close()
     if secret == None:
         return json({'message': "No register app!"}, status=400)
 
@@ -42,7 +54,7 @@ async def serve(request, name):
 
 def loss_header(headers):
     # Get union set
-    return len(REQUIRED_HEADERS - headers.keys()) != 0
+    return 0
 
 def sign(secret, body):
     hashed = hmac.new(secret, body, sha1)
